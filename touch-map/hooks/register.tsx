@@ -861,10 +861,17 @@ async function minimize($: any): Promise<void> {
   await trace($, 'minimize')
 }
 
+// 先に開いてみて、描かれたときだけ最小化を解く。描かれずに保留されたら（人の操作でなく開いたとき、狭い端末では保留される）
+// 帯を残したまま知らせる。帯もペインも消えて何も見えなくなるのを防ぐ
 async function restore($: any): Promise<void> {
+  const opened = await $.ui.open({ id: PANE, title: 'Touch map' })
+  if (opened?.isPlaced === false) {
+    $.ui.toast('Touch map: the terminal is too narrow to open the pane here. Run /touch-map to open it.')
+    await trace($, 'restore', { placed: false, reason: opened.reason })
+    return
+  }
   await setMinimized($, false)
-  await $.ui.open({ id: PANE, title: 'Touch map' })
-  await trace($, 'restore')
+  await trace($, 'restore', { placed: true })
 }
 
 async function setLabel($: any, value: string): Promise<void> {
@@ -1248,6 +1255,12 @@ export const register: Register = on => {
   })
 
   // 右上の × で閉じたときも最小化として扱い、プロンプトの上に1行だけ残す
+  // 帯の [ open ]。押した操作の中で開くので、端末の幅に関係なくペインが置かれる
+  on('ui.press', { element: 'open' }, async ($, e, next) => {
+    if (e.plugin === 'touch-map' && e.component === 'AbovePrompt') await restore($)
+    return next(e)
+  })
+
   on('ui.close', async ($, e, next) => {
     if (e.id === PANE && e.origin.kind === 'person') {
       await setMinimized($, true)
@@ -1273,7 +1286,8 @@ export const register: Register = on => {
           <Text bold>{fmt(touched)}</Text>
           <Text dimColor>{`/${fmt(files.size)}`}</Text>
         </Text>
-        <Button key="open" label="open" onPress={() => void restore($)} />
+        {/* 開く処理は下の ui.press のフックで行う。ここで描いたときの $ で開くと、人の操作として扱われない */}
+        <Button key="open" label="open" onPress={() => undefined} />
       </Box>
     )
   })

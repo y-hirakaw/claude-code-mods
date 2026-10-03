@@ -12,7 +12,7 @@ const CLEAR = {
 // エンジンの外側（git、ファイル、時計、ツールの実行）をテストの中で答え、書き出したログを集める
 // status は git status --porcelain -z の出力（呼ばれた回数を渡して切り替えられる）、mtimes はファイルごとの更新時刻
 // bashText は Bash の出力、ownClock はテストが時計を自分で持つとき
-type Extra = { status?: (calls: number) => string; mtimes?: Record<string, number>; bashText?: string; ownClock?: boolean }
+type Extra = { status?: (calls: number) => string; mtimes?: Record<string, number>; bashText?: string; ownClock?: boolean; placed?: boolean }
 
 const stub = (on: On, list = FILES, extra: Extra = {}) => {
   let statusCalls = 0
@@ -44,7 +44,7 @@ const stub = (on: On, list = FILES, extra: Extra = {}) => {
     return { value: undefined }
   })
   on('command.register', async () => ({ value: { command: 'touch-map' } }))
-  on('ui.open', async () => ({ value: { isPlaced: true as const } }))
+  on('ui.open', async () => ({ value: extra.placed === false ? { isPlaced: false as const, reason: 'narrow' } : { isPlaced: true as const } }))
   on('tool.call', async (_$, e) => {
     // 範囲を指定した Read は、Claude Code と同じく読んだ行と全体の行数を返す（全体は100行）
     if (e.tool === 'Read' && e.offset !== undefined) {
@@ -631,4 +631,34 @@ test('帯は「全部は読んでいない」ときだけ出す。ディレク�
   expect(full).not.toMatch(/[━─┄■█]/)
   expect(await ui.find({ key: 'min' })).toBeUndefined()
   await ui.unmount()
+})
+
+test('帯の [ open ] で開く（ペインが置けるとき）', async ($, on) => {
+  const written = stub(on, FILES, { placed: true })
+  on('ui.close', async () => ({ value: undefined }))
+  on('ui.toast', async () => ({ value: undefined }))
+  await $.session.start({ cwd: '/repo', surface: 'terminal', isInteractive: true })
+  await $.command.run({ ...CLEAR, args: 'debug on' })
+  await $.command.run({ ...CLEAR, args: 'min' })
+  const band = await $.ui.mount({ plugin: 'touch-map', surface: 'terminal', component: 'AbovePrompt', props: {} as never })
+  await band.press({ key: 'open' })
+  await band.unmount()
+  const view = written.filter(w => w.path.endsWith('.view.txt')).pop()?.text ?? ''
+  // 置けたら最小化が解け、保留されたら最小化のまま（帯が残る）
+  expect(view.startsWith('# Touch map (minimized)')).toBe(false)
+})
+
+test('帯の [ open ] で開く（ペインが保留されるとき）', async ($, on) => {
+  const written = stub(on, FILES, { placed: false })
+  on('ui.close', async () => ({ value: undefined }))
+  on('ui.toast', async () => ({ value: undefined }))
+  await $.session.start({ cwd: '/repo', surface: 'terminal', isInteractive: true })
+  await $.command.run({ ...CLEAR, args: 'debug on' })
+  await $.command.run({ ...CLEAR, args: 'min' })
+  const band = await $.ui.mount({ plugin: 'touch-map', surface: 'terminal', component: 'AbovePrompt', props: {} as never })
+  await band.press({ key: 'open' })
+  await band.unmount()
+  const view = written.filter(w => w.path.endsWith('.view.txt')).pop()?.text ?? ''
+  // 置けたら最小化が解け、保留されたら最小化のまま（帯が残る）
+  expect(view.startsWith('# Touch map (minimized)')).toBe(true)
 })
