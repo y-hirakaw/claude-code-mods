@@ -750,7 +750,12 @@ const elapsed = (from: number, now: number): string => {
   return m < 60 ? `${m}m` : `${Math.floor(m / 60)}h ${m % 60}m`
 }
 
-// 状態ごとの件数を width マスに割り振る。1件でもあれば1マスは取る。残りは触っていない部分
+// 帯の「触っていない部分」。■ はマップのマスと同じ暗さ、━ の残りは ─ で描く
+const SQ_TRACK = '#3a3e48'
+const LINE_TRACK = '#3f4654'
+
+// 状態ごとの件数を width マスの ■ に割り振る。1件でもあれば1マスは取る。残りは触っていない部分。
+// █ だと上下の行の帯とつながって塊に見えるので、マスの間に隙間ができる ■ を使う
 const shareBar = (c: number[], total: number, width: number): Seg[] => {
   const parts = DEEP_FIRST.filter(i => (c[i] ?? 0) > 0).map(i => ({ i, n: Math.max(1, Math.round(((c[i] ?? 0) / Math.max(1, total)) * width)) }))
   let used = parts.reduce((n, p) => n + p.n, 0)
@@ -759,15 +764,15 @@ const shareBar = (c: number[], total: number, width: number): Seg[] => {
     big.n -= 1
     used -= 1
   }
-  const segs = parts.map(p => ({ text: '█'.repeat(p.n), color: COLORS[p.i] as string }))
-  if (used < width) segs.push({ text: '░'.repeat(width - used), color: TRACK })
+  const segs = parts.map(p => ({ text: '■'.repeat(p.n), color: COLORS[p.i] as string }))
+  if (used < width) segs.push({ text: '■'.repeat(width - used), color: SQ_TRACK })
   return segs
 }
 
-// ファイル行のバー。全体を読んだ・書いたら埋める。行範囲が分かる部分読取はその位置だけ、grep だけなら点線
+// ファイル行の帯は「全部は読んでいない」ときだけ出す（全部読んだ・書いたことは名前の色が言っている）。
+// 行範囲が分かる部分読取は読んだところを ━、残りを ─。grep の一致行だけなら点線
 const fileBar = (t: Touch): Seg[] => {
-  if (t.d === true || t.s === 0) return []
-  if (t.s !== 1) return [{ text: '█'.repeat(BAR), color: COLORS[t.s] }]
+  if (t.d === true || t.s !== 1) return []
   if (!t.r || !t.n) return [{ text: '┄'.repeat(BAR), color: COLORS[1] }]
   const cells = Array.from({ length: BAR }, () => false)
   for (const [a, b] of t.r) {
@@ -776,9 +781,9 @@ const fileBar = (t: Touch): Seg[] => {
   const segs: Seg[] = []
   for (const on of cells) {
     const last = segs[segs.length - 1]
-    const color = on ? COLORS[1] : TRACK
-    if (last && last.color === color) last.text += on ? '█' : '░'
-    else segs.push({ text: on ? '█' : '░', color })
+    const color = on ? COLORS[1] : LINE_TRACK
+    if (last && last.color === color) last.text += on ? '━' : '─'
+    else segs.push({ text: on ? '━' : '─', color })
   }
   return segs
 }
@@ -1260,11 +1265,9 @@ export const register: Register = on => {
       <Box flexDirection="row" gap={1}>
         <Text dimColor>Touch map</Text>
         <Text>
-          <Text color={TRACK}>▕</Text>
-          {shareBar(counts(all), files.size, 20).map(s => (
+          {shareBar(counts(all), files.size, BAR).map(s => (
             <Text color={s.color}>{s.text}</Text>
           ))}
-          <Text color={TRACK}>▏</Text>
         </Text>
         <Text>
           <Text bold>{fmt(touched)}</Text>
@@ -1461,17 +1464,20 @@ export const register: Register = on => {
           </Box>
           <Text dimColor>{elapsed(seg.startedAt, await $.clock.now())}</Text>
           <Button key="save" variant="primary" label="save" onPress={() => void save($, true)} />
+          {/* 最小化はペイン右上の × でできるので、ボタンは置かない */}
           <Button key="discard" label="discard" onPress={() => void save($, false)} />
-          <Button key="min" label="–" onPress={() => void minimize($)} />
         </Box>
-        <Text wrap="truncate-end">
-          <Text bold>{fmt(Object.keys(all).length)}</Text>
-          <Text dimColor>{`/${fmt(files.size)}`}</Text>
+        {/* 狭いペインでは、項目の途中で切らずに項目の切れ目で折り返す */}
+        <Box flexDirection="row" flexWrap="wrap" columnGap={2}>
+          <Text>
+            <Text bold>{fmt(Object.keys(all).length)}</Text>
+            <Text dimColor>{`/${fmt(files.size)}`}</Text>
+          </Text>
           {legend.map(l => (
-            <Text color={l.color}>{`  ${l.text}`}</Text>
+            <Text color={l.color}>{l.text}</Text>
           ))}
-          {fileNote.includes('cut') && <Text color={GONE}>{`  ${fileNote}`}</Text>}
-        </Text>
+          {fileNote.includes('cut') && <Text color={GONE}>{fileNote}</Text>}
+        </Box>
         {now && (
           <Box flexDirection="row" gap={1}>
             <Text dimColor>now</Text>
