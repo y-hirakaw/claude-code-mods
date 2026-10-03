@@ -662,3 +662,17 @@ test('帯の [ open ] で開く（ペインが保留されるとき）', async (
   // 置けたら最小化が解け、保留されたら最小化のまま（帯が残る）
   expect(view.startsWith('# Touch map (minimized)')).toBe(true)
 })
+
+test('アクティビティマップ: 新しく作ったファイルのマスも光る', async ($, on) => {
+  stub(on)
+  await $.session.start({ cwd: '/repo', surface: 'terminal', isInteractive: true })
+  const mount = () => $.ui.mount({ plugin: 'touch-map', surface: 'terminal', component: 'Pane', requestId: 'touch-map', props: PANE_PROPS, viewport: { columns: 80, rows: 40 } })
+  // 配置はペインを描いたときに決まる。新しいファイルはそのあとに作る
+  await (await mount()).unmount()
+  await $.tool.call({ tool: 'Write', file_path: '/repo/notes/new.md', content: 'x' })
+  const ui = await mount()
+  const map = await ui.find({ key: 'map' })
+  const fgs = decode(String((map?.props as { cells?: string } | undefined)?.cells ?? '')).filter(([ch]) => ch === 0x25a0).map(([, fg]) => fg)
+  expect(fgs).toContain(0xffffff)
+  await ui.unmount()
+})

@@ -1063,7 +1063,8 @@ const paintCells = (states: CellStates, layout: MapLayout, now: number): string 
 
 // 触ったマスを光らせ、光っている間だけ 1 秒に 10 回塗り直す
 async function flash($: any, paths: string[], sub = false): Promise<void> {
-  const layout = mapLayout
+  // 新しいファイルを記録した直後は配置が古い（そのファイルのマスが無く、ほかのマスもずれうる）ので、ここで作り直す
+  const layout = mapLayout && layoutOf(mapLayout.asked)
   if (!layout || paths.length === 0) return
   const now = await $.clock.now()
   for (const p of paths) {
