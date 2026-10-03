@@ -13,22 +13,7 @@ Did it read the file, or only see a few grep matches? Which parts did it never t
 
 touch-map keeps track of every file Claude touches in the session and draws it in a pane:
 
-```
-fix login redirect                         3m [ save ] [ discard ] [ – ]
-22/264  ■edited 1  ■partial 20  ■listed 1  ◆auto 2
-now src/auth/session.ts
-■ ■ ■ ■ ■ ■ ■ ■ ■ ■ ■ ■ ■ ■ ■ ■ ■ ■ ■ ■ ■ ■ ■ ■ ■ ■ ■ ■
-■ ■ ■ ■ ■ ■ ■ ■ ■ ■ ■ ■ ■ ■ ■ ■ ■ ■ ■ ■ ■ ■ ■ ■ ■ ■ ■ ■   (activity map)
-────────────────────────────────────────────────────────────────────────
-▾ src/                                    ██░░░░░░░░    21/147
-  ▾ auth/                                 ███░░░░░░░       4/9
-      session.ts                          ██████████
-      redirect.ts                         ░░░░░░█░░░   120–141
-      middleware.ts                       ┄┄┄┄┄┄┄┄┄┄
-    ▸ 5 untouched: oauth.ts password.ts tokens.ts …
-  ▸ 6 untouched: api/ components/ hooks/ …
-◆ CLAUDE.md  AGENTS.md
-```
+![touch-map pane: the header, the activity map and the top of the tree](docs/touch-map-pane.png)
 
 ### What it shows
 
@@ -43,6 +28,8 @@ Each file gets the deepest state it reached:
 | listed | Claude only saw the name | `ls`, `find`, `grep -l`, `git status` and similar output |
 | deleted | Claude removed the file | `rm`, `git rm`, `mv` |
 | auto | Loaded into context automatically | `CLAUDE.md` and rules files |
+
+![The tree: directories with their bars, files colored by state, untouched entries folded into one line](docs/touch-map-tree.png)
 
 - **Directory rows** show a 10-cell bar of how many of their files were touched and in which states, and `touched/total`.
 - **File rows** show which lines were read: the cells of the file Claude read are filled. A dotted bar (`┄┄┄`) means only grep matches were seen.
