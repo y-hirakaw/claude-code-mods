@@ -6,7 +6,9 @@ Mods for [Claude Code](https://claude.com/claude-code) by [y-hirakaw](https://gi
 
 **See how much of your codebase Claude actually looked at.**
 
-![touch-map pane: the header, the activity map and the top of the tree](docs/touch-map-pane.png)
+![touch-map while Claude surveys a Unity project with two subagents: squares flash white for Claude and yellow for subagents, and the tree fills in](docs/touch-map-demo-pane.gif)
+
+<sub>Claude surveys a Unity project while two subagents work (yellow), sped up. [With the conversation beside it](docs/touch-map-demo.gif)</sub>
 
 You ask Claude something and get an answer. Did it read the file, or only see a few grep matches? Which parts did it never open?
 touch-map marks every file Claude touches in this session, down to the lines it read, in a pane beside the conversation.
@@ -46,7 +48,7 @@ Each file shows the deepest state it reached.
 
 ### Reading the pane
 
-![The tree: directories with their bars, files colored by state, untouched entries folded into one line](docs/touch-map-tree.png)
+![The pane: the header, the activity map, and the tree with directory bars, files colored by state, dotted bars for grep-only reads and untouched entries folded into one line](docs/touch-map-reading.png)
 
 - A directory's `■■■■■■■■■■` is the share of its files in each state, then `touched/total`.
 - A file has a bar only when Claude did not see all of it: `━━━───` marks the lines it read, `┄┄┄` means only grep matches. A file read in full says so with the color of its name.
