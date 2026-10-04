@@ -24,7 +24,9 @@ claude plugin install touch-map@y-hirakaw-mods
 
 Or inside Claude Code: run `/plugin marketplace add y-hirakaw/claude-code-mods`, then open `/plugin`, pick the marketplace, select **touch-map** and install it.
 
-Start a new session and run `/touch-map`. Needs Claude Code 2.1.287 or later.
+Then start a new session and run `/touch-map` to open the pane. Needs Claude Code 2.1.287 or later.
+
+After that the pane opens by itself when a session starts, as long as the terminal is wide enough (Claude Code places a pane nobody asked for only from 110 columns once you have opened it, 144 before). On a narrower terminal, run `/touch-map` again.
 
 <details>
 <summary>Try it for one session without installing</summary>
@@ -111,6 +113,8 @@ claude plugin install touch-map@y-hirakaw-mods
 ```
 
 Claude Code の中で入れるときは、`/plugin marketplace add y-hirakaw/claude-code-mods` のあと、`/plugin` の画面でマーケットプレイスを選び、touch-map をインストールしてください。
+
+インストールしたら、新しいセッションで `/touch-map` を実行してペインを開きます。それ以降は、ターミナルの幅が足りていれば（一度開いたあとは110桁以上）、起動時に自動で開きます。狭いときは、そのたびに `/touch-map` を実行してください。
 
 外部に何かを送ることはありません。実行するのは `printenv HOME`・`git ls-files`・`git worktree list`・`git status` だけで、書き込むのは `~/.claude/touch-map-logs/` の記録だけです。
 
