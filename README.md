@@ -8,14 +8,14 @@ Mods for [Claude Code](https://claude.com/claude-code) by [y-hirakaw](https://gi
 
 ![touch-map while Claude surveys a Unity project with two subagents: squares flash white for Claude and yellow for subagents, and the tree fills in](docs/touch-map-demo-pane.gif)
 
-<sub>Claude surveys a Unity project while two subagents work (yellow), sped up. [With the conversation beside it](docs/touch-map-demo.gif)</sub>
+<sub>Claude and two subagents survey a Unity project, sped up. [With the conversation beside it](docs/touch-map-demo.gif)</sub>
 
 You ask Claude something and get an answer. Did it read the file, or only see a few grep matches? Which parts did it never open?
 touch-map marks every file Claude touches in this session, down to the lines it read, in a pane beside the conversation.
 
 ### Install
 
-From a shell:
+Needs Claude Code 2.1.287 or later. From a shell:
 
 ```
 claude plugin marketplace add y-hirakaw/claude-code-mods
@@ -24,9 +24,7 @@ claude plugin install touch-map@y-hirakaw-mods
 
 Or inside Claude Code: run `/plugin marketplace add y-hirakaw/claude-code-mods`, then open `/plugin`, pick the marketplace, select **touch-map** and install it.
 
-Then start a new session and run `/touch-map` to open the pane. Needs Claude Code 2.1.287 or later.
-
-After that the pane opens by itself when a session starts, as long as the terminal is wide enough (Claude Code places a pane nobody asked for only from 110 columns once you have opened it, 144 before). On a narrower terminal, run `/touch-map` again.
+Then start a new session and run `/touch-map` once. From then on the pane opens by itself when the terminal is wide enough; otherwise run `/touch-map`.
 
 <details>
 <summary>Try it for one session without installing</summary>
@@ -62,7 +60,7 @@ Each file shows the deepest state it reached.
 - Click `▾` / `▸` to open or close a directory. Untouched files fold into one `N untouched: …` line.
 - `[ save ]` writes the record to `~/.claude/touch-map-logs/` and starts over. It is also saved on `/clear`, compaction and exit.
 - The pane's `×` shrinks it to one line above the prompt.
-- Subagents and git worktrees count too: a file read inside a worktree is the same path in the repository.
+- A file read inside a git worktree counts as the same path in the repository.
 
 ### Commands
 
@@ -91,32 +89,18 @@ Each file shows the deepest state it reached.
 
 </details>
 
-<details>
-<summary><b>Development</b></summary>
-
-```
-claude plugin validate touch-map
-claude plugin test touch-map
-```
-
-After Claude Code has loaded the mod once (for example with `--plugin-dir`), its typings are written to `touch-map/.claude-plugin/types/` and `tsc -p touch-map` type-checks it.
-
-</details>
+Developing a mod: see [CLAUDE.md](./CLAUDE.md).
 
 ## 日本語
 
-touch-map は、Claude がこのセッションで触ったファイルを created・edited・read・partial・listed・deleted・auto に分けて、会話の横のペインにツリーとアクティビティマップで表示する Claude Code の mod です。触っていないところも畳んで見せるので、「どこまで見て答えたのか」がわかります。色の意味と画面の読み方は、上の表と図のとおりです。
+touch-map は、Claude がこのセッションで触ったファイルを created・edited・read・partial・listed・deleted・auto に分けて、会話の横のペインにツリーとアクティビティマップで表示する Claude Code の mod です。触っていないところも畳んで見せるので、「どこまで見て答えたのか」がわかります。
 
 ```
 claude plugin marketplace add y-hirakaw/claude-code-mods
 claude plugin install touch-map@y-hirakaw-mods
 ```
 
-Claude Code の中で入れるときは、`/plugin marketplace add y-hirakaw/claude-code-mods` のあと、`/plugin` の画面でマーケットプレイスを選び、touch-map をインストールしてください。
-
-インストールしたら、新しいセッションで `/touch-map` を実行してペインを開きます。それ以降は、ターミナルの幅が足りていれば（一度開いたあとは110桁以上）、起動時に自動で開きます。狭いときは、そのたびに `/touch-map` を実行してください。
-
-外部に何かを送ることはありません。実行するのは `printenv HOME`・`git ls-files`・`git worktree list`・`git status` だけで、書き込むのは `~/.claude/touch-map-logs/` の記録だけです。
+インストールしたら、新しいセッションで一度 `/touch-map` を実行してください。外部に何かを送ることはなく、実行するのは `printenv HOME`・`git ls-files`・`git worktree list`・`git status` だけです。
 
 ## License
 
