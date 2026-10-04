@@ -15,12 +15,16 @@ touch-map marks every file Claude touches in this session, down to the lines it 
 
 ### Install
 
+From a shell:
+
 ```
-/plugin marketplace add y-hirakaw/claude-code-mods
-/plugin install touch-map@y-hirakaw-mods
+claude plugin marketplace add y-hirakaw/claude-code-mods
+claude plugin install touch-map@y-hirakaw-mods
 ```
 
-Then run `/touch-map`. Needs Claude Code 2.1.287 or later.
+Or inside Claude Code: run `/plugin marketplace add y-hirakaw/claude-code-mods`, then open `/plugin`, pick the marketplace, select **touch-map** and install it.
+
+Start a new session and run `/touch-map`. Needs Claude Code 2.1.287 or later.
 
 <details>
 <summary>Try it for one session without installing</summary>
@@ -102,9 +106,11 @@ After Claude Code has loaded the mod once (for example with `--plugin-dir`), its
 touch-map は、Claude がこのセッションで触ったファイルを created・edited・read・partial・listed・deleted・auto に分けて、会話の横のペインにツリーとアクティビティマップで表示する Claude Code の mod です。触っていないところも畳んで見せるので、「どこまで見て答えたのか」がわかります。色の意味と画面の読み方は、上の表と図のとおりです。
 
 ```
-/plugin marketplace add y-hirakaw/claude-code-mods
-/plugin install touch-map@y-hirakaw-mods
+claude plugin marketplace add y-hirakaw/claude-code-mods
+claude plugin install touch-map@y-hirakaw-mods
 ```
+
+Claude Code の中で入れるときは、`/plugin marketplace add y-hirakaw/claude-code-mods` のあと、`/plugin` の画面でマーケットプレイスを選び、touch-map をインストールしてください。
 
 外部に何かを送ることはありません。実行するのは `printenv HOME`・`git ls-files`・`git worktree list`・`git status` だけで、書き込むのは `~/.claude/touch-map-logs/` の記録だけです。
 
