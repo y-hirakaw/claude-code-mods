@@ -15,7 +15,7 @@ touch-map marks every file Claude touches in this session, down to the lines it 
 
 ### Install
 
-Needs Claude Code 2.1.287 or later. From a shell:
+Needs Claude Code 2.1.287 or later. On Ghostty, use 1.3.1 or later: older versions may not pass clicks to the pane. From a shell:
 
 ```
 claude plugin marketplace add y-hirakaw/claude-code-mods
@@ -99,6 +99,8 @@ touch-map は、Claude がこのセッションで触ったファイルを creat
 claude plugin marketplace add y-hirakaw/claude-code-mods
 claude plugin install touch-map@y-hirakaw-mods
 ```
+
+Claude Code 2.1.287 以上が必要です。Ghostty は 1.3.1 以上を推奨します（古い版ではペインのボタンがクリックできないことがあります）。
 
 インストールしたら、新しいセッションで一度 `/touch-map` を実行してください。外部に何かを送ることはなく、実行するのは `printenv HOME`・`git ls-files`・`git worktree list`・`git status` だけです。
 
