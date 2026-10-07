@@ -1,6 +1,6 @@
 # claude-code-mods
 
-Mods for [Claude Code](https://claude.com/claude-code) by [y-hirakaw](https://github.com/y-hirakaw). So far: [touch-map](#touch-map).
+Mods for [Claude Code](https://claude.com/claude-code) by [y-hirakaw](https://github.com/y-hirakaw). So far: [touch-map](#touch-map) and [copy-blocks](#copy-blocks). Each installs and turns on or off on its own.
 
 ## touch-map
 
@@ -89,6 +89,36 @@ Each file shows the deepest state it reached.
 
 </details>
 
+## copy-blocks
+
+**Copy a quote or code block from Claude's answer without the terminal's line breaks.**
+
+When Claude writes something for you to paste, such as a reply in a `>` quote or a command in a code block, selecting it in the terminal copies the wrapped lines and the `│` gutter with it. copy-blocks puts a button for each quote and code block of Claude's last answer above the prompt. Click one to copy just the text.
+
+```
+copy 1 ❝ Thanks for the update… · 2 sh git switch -c featu… · 3 tsx export const regist… 7L ×
+```
+
+- Code blocks show their language and the first line that is not an import or a bracket. Blocks of 5 lines or more show their line count.
+- The row stays on one line: labels shorten as the terminal narrows, the rest folds into `+N`, which opens a pane listing every block, and below 50 columns only the numbers remain.
+- A copied button turns into `✓ copied` for a moment and keeps a `✓`.
+- The buttons go away when you send your next prompt, or with `×`.
+
+### Install
+
+```
+claude plugin marketplace add y-hirakaw/claude-code-mods
+claude plugin install copy-blocks@y-hirakaw-mods
+```
+
+Needs Claude Code 2.1.287 or later. Nothing to run afterwards: the buttons appear after Claude's next answer.
+
+### What it reads, runs and writes
+
+- **Reads** Claude's final answer at the end of each turn. Subagents' answers and interrupted turns are skipped.
+- **Runs** nothing, and sends nothing over the network.
+- **Writes** the clipboard, only when you click a button, the same way `/copy` does. It writes no files.
+
 Developing a mod: see [CLAUDE.md](./CLAUDE.md).
 
 ## 日本語
@@ -103,6 +133,14 @@ claude plugin install touch-map@y-hirakaw-mods
 Claude Code 2.1.287 以上が必要です。Ghostty は 1.3.1 以上を推奨します（古い版ではペインのボタンがクリックできないことがあります）。
 
 インストールしたら、新しいセッションで一度 `/touch-map` を実行してください。外部に何かを送ることはなく、実行するのは `printenv HOME`・`git ls-files`・`git worktree list`・`git status` だけです。
+
+copy-blocks は、Claude の最後の返事にある引用（`>`）とコードブロックごとに、入力欄の上にコピーボタンを並べる mod です。ターミナルで選択してコピーしたときのように、余計な改行や `│` が入りません。
+
+```
+claude plugin install copy-blocks@y-hirakaw-mods
+```
+
+touch-map と copy-blocks は、それぞれ別に入れて、`/plugin` から別々に有効・無効を切り替えられます。copy-blocks はコマンドを実行せず、外部に何も送らず、書き込むのはボタンを押したときのクリップボードだけです。
 
 ## License
 
