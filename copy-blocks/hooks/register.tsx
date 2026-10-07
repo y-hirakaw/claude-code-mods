@@ -175,12 +175,14 @@ export const register: Register = on => {
     const lit = await read($, flash)
     const { Box, Button, Text } = $.ui.resolve(e)
     const { items, rest } = fit(list, e.props.bodyColumns)
+    // 帯はほかの mod と分け合う。下の mod が描くもの（touch-map の最小化した行など）を消さないよう、ボタンの行の下に並べる
+    const below = await next(e)
     const row: any[] = []
     items.forEach((it, n) => {
       if (n > 0) row.push(<Text key={`sep-${n}`} dimColor>·</Text>)
       row.push(entry($, e, list, it, done, lit))
     })
-    return (
+    const mine = (
       <Box flexDirection="row" columnGap={1}>
         <Box flexShrink={0}>
           <Text dimColor>copy</Text>
@@ -189,6 +191,14 @@ export const register: Register = on => {
         {rest > 0 && <Button key="more" label={`+${rest}`} plain onPress={() => {}} />}
         <Button key="dismiss" label="×" plain dimColor role="dismiss" onPress={() => update($, blocks, () => [])} />
       </Box>
+    )
+    return below ? (
+      <Box flexDirection="column">
+        {mine}
+        {below}
+      </Box>
+    ) : (
+      mine
     )
   })
 

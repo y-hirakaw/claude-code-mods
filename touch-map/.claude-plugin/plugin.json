@@ -1,6 +1,6 @@
 {
   "name": "touch-map",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "See which files Claude has listed, read, partially read, edited, created or deleted, as a tree and an activity map in a pane.",
   "author": {
     "name": "y-hirakaw",

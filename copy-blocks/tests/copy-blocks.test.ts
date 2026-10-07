@@ -36,10 +36,12 @@ test('返事の後にボタンが出て、押すとブロックの本文をコ�
     toasts.push(String((e as { text?: unknown }).text))
     return {} as never
   })
-  on('ui.render', async ($$, e) => $$.ui.resolve(e).Text({ children: [''] }))
+  on('ui.render', async ($$, e) => $$.ui.resolve(e).Text({ children: ['below'] }))
   const props = { hasSurvey: false, isWorking: false, maxRows: 10, bodyColumns: 80 }
   const ui = await $.ui.mount({ plugin: 'copy-blocks', surface: 'terminal', component: 'AbovePrompt', props: props as never })
   await $.turn.complete({ answer: ANSWER, durationMs: 1, isAborted: false, turnId: 't1', reason: 'answer' } as never)
+  // 下の mod（touch-map の最小化した行など）が描いたものも消さずに残す
+  expect(await ui.find({ text: 'below' })).toBeDefined()
   await ui.press({ key: 'copy-0' })
   // うまくいったときはトーストを出さず、帯に ✓ を出す
   expect(toasts).toEqual([])

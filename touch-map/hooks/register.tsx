@@ -1275,7 +1275,9 @@ export const register: Register = on => {
     const { Box, Text, Button } = $.ui.resolve(e)
     const all: Record<string, Touch> = await read($, touches)
     const touched = Object.keys(all).length
-    return (
+    // 帯はほかの mod と分け合う。下の mod が描くもの（copy-blocks のボタンなど）を消さないよう、自分の行の下に並べる
+    const below = await next(e)
+    const mine = (
       <Box flexDirection="row" gap={1}>
         <Text dimColor>Touch map</Text>
         <Text>
@@ -1290,6 +1292,14 @@ export const register: Register = on => {
         {/* 開く処理は下の ui.press のフックで行う。ここで描いたときの $ で開くと、人の操作として扱われない */}
         <Button key="open" label="open" onPress={() => undefined} />
       </Box>
+    )
+    return below ? (
+      <Box flexDirection="column">
+        {mine}
+        {below}
+      </Box>
+    ) : (
+      mine
     )
   })
 

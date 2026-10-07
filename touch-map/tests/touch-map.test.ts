@@ -18,6 +18,8 @@ const stub = (on: On, list = FILES, extra: Extra = {}) => {
   let statusCalls = 0
   const written: { path: string; text: string }[] = []
   on('session.start', async (_$, e) => ({ cwd: e.cwd }))
+  // 帯の下で描く mod の代わり。touch-map は自分の行の下にこれを残す
+  on('ui.render', { component: 'AbovePrompt' }, async ($$, e) => $$.ui.resolve(e).Text({ children: ['below'] }))
   on('session.root', async () => ({ value: '/repo' }))
   on('session.cwd', async () => ({ value: '' }))
   on('process.run', async (_$, e) => ({
@@ -164,6 +166,8 @@ test('最小化するとプロンプトの上に件数と［open］を出す', a
   })
   expect(await band.find({ text: '/6' })).toBeDefined()
   expect(await band.find({ key: 'open' })).toBeDefined()
+  // 下の mod（copy-blocks など）が描いたものも消さずに残す
+  expect(await band.find({ text: 'below' })).toBeDefined()
   await band.unmount()
 })
 

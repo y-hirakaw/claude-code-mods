@@ -12,13 +12,13 @@
       "name": "touch-map",
       "source": "./touch-map",
       "description": "See which files Claude has listed, read, partially read, edited, created or deleted, as a tree and an activity map in a pane.",
-      "version": "0.1.0"
+      "version": "0.1.1"
     },
     {
       "name": "copy-blocks",
       "source": "./copy-blocks",
       "description": "Copy each quote or code block of Claude's last answer with one click, from buttons above the prompt.",
-      "version": "0.1.0"
+      "version": "0.1.1"
     }
   ]
 }
