@@ -1,6 +1,11 @@
 # claude-code-mods
 
-Mods for [Claude Code](https://claude.com/claude-code) by [y-hirakaw](https://github.com/y-hirakaw). So far: [touch-map](#touch-map) and [copy-blocks](#copy-blocks). Each installs and turns on or off on its own.
+Mods for [Claude Code](https://claude.com/claude-code) by [y-hirakaw](https://github.com/y-hirakaw). Each installs and turns on or off on its own.
+
+| Mod | What it does |
+| --- | --- |
+| [touch-map](#touch-map) | Shows which files Claude read, edited or never opened, as a tree and an activity map in a pane. |
+| [copy-blocks](#copy-blocks) | Copies a quote or code block from Claude's last answer with one click, without the terminal's line breaks. |
 
 ## touch-map
 
@@ -122,6 +127,11 @@ Needs Claude Code 2.1.287 or later. Nothing to run afterwards: the buttons appea
 Developing a mod: see [CLAUDE.md](./CLAUDE.md).
 
 ## 日本語
+
+| mod | できること |
+| --- | --- |
+| touch-map | Claude がどのファイルを読んだか、変えたか、開かなかったかを、ペインにツリーとマップで表示する |
+| copy-blocks | Claude の最後の返事にある引用やコードブロックを、ボタン1つで余計な改行なしにコピーする |
 
 touch-map は、Claude がこのセッションで触ったファイルを created・edited・read・partial・listed・deleted・auto に分けて、会話の横のペインにツリーとアクティビティマップで表示する Claude Code の mod です。触っていないところも畳んで見せるので、「どこまで見て答えたのか」がわかります。
 
