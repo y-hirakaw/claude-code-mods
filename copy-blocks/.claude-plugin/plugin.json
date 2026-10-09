@@ -1,6 +1,6 @@
 {
   "name": "copy-blocks",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "description": "Copy each quote or code block of Claude's last answer with one click, from buttons above the prompt.",
   "author": {
     "name": "y-hirakaw",
@@ -9,6 +9,25 @@
   "homepage": "https://github.com/y-hirakaw/claude-code-mods",
   "repository": "https://github.com/y-hirakaw/claude-code-mods",
   "license": "MIT",
-  "keywords": ["mod", "clipboard", "copy", "quote", "code-block"],
-  "types": "./types/index.d.ts"
+  "keywords": [
+    "mod",
+    "clipboard",
+    "copy",
+    "quote",
+    "code-block"
+  ],
+  "types": "./types/index.d.ts",
+  "userConfig": {
+    "placement": {
+      "type": "string",
+      "title": "copy-blocks buttons",
+      "description": "Where copy buttons appear: inside the answer above each block, in the row above the prompt, or both.",
+      "options": [
+        "both",
+        "inline",
+        "band"
+      ],
+      "default": "both"
+    }
+  }
 }

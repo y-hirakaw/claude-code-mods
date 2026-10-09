@@ -5,7 +5,7 @@ Mods for [Claude Code](https://claude.com/claude-code) by [y-hirakaw](https://gi
 | Mod | What it does |
 | --- | --- |
 | [touch-map](#touch-map) | Shows which files Claude read, edited or never opened, as a tree and an activity map in a pane. |
-| [copy-blocks](#copy-blocks) | Copies a quote or code block from Claude's last answer with one click, without the terminal's line breaks. |
+| [copy-blocks](#copy-blocks) | Adds copy buttons to the quotes and code blocks in Claude's answers, so you copy them without the terminal's line breaks. |
 
 ## touch-map
 
@@ -98,16 +98,25 @@ Each file shows the deepest state it reached.
 
 **Copy a quote or code block from Claude's answer without the terminal's line breaks.**
 
-When Claude writes something for you to paste, such as a reply in a `>` quote or a command in a code block, selecting it in the terminal copies the wrapped lines and the `│` gutter with it. copy-blocks puts a button for each quote and code block of Claude's last answer above the prompt. Click one to copy just the text.
+When Claude writes something for you to paste, such as a reply in a `>` quote or a command in a code block, selecting it in the terminal copies the wrapped lines and the `│` gutter with it. copy-blocks puts a copy button on each quote and code block: in the answer itself, right above the block, and in a row above the prompt for Claude's last answer. Click one to copy just the text.
+
+```
+── bash · 2 lines ───────────────── ⧉ copy
+git switch -c feature
+git push -u origin feature
+```
 
 ```
 copy 1 ❝ Thanks for the update… · 2 sh git switch -c featu… · 3 tsx export const regist… 7L ×
 ```
 
+- In the answer, the header line above each block is the button: click anywhere on it. Earlier answers keep their buttons.
+
 - Code blocks show their language and the first line that is not an import or a bracket. Blocks of 5 lines or more show their line count.
 - The row stays on one line: labels shorten as the terminal narrows, the rest folds into `+N`, which opens a pane listing every block, and below 50 columns only the numbers remain.
-- A copied button turns into `✓ copied` for a moment and keeps a `✓`.
-- The buttons go away when you send your next prompt, or with `×`.
+- A copied button turns into `✓ copied` for a moment; in the row it keeps a `✓`.
+- The row goes away when you send your next prompt, or with `×`.
+- Choose where the buttons appear in `/config` → **copy-blocks buttons**: `both` (default), `inline` (in the answer only) or `band` (the row above the prompt only). With `band`, answers are drawn exactly as Claude Code draws them.
 
 ### Install
 
@@ -120,7 +129,7 @@ Needs Claude Code 2.1.287 or later. Nothing to run afterwards: the buttons appea
 
 ### What it reads, runs and writes
 
-- **Reads** Claude's final answer at the end of each turn. Subagents' answers and interrupted turns are skipped.
+- **Reads** Claude's final answer at the end of each turn (subagents' answers and interrupted turns are skipped), and, unless set to `band`, the text of each answer as it is drawn, to place the buttons. Your stored conversation is not changed.
 - **Runs** nothing, and sends nothing over the network.
 - **Writes** the clipboard, only when you click a button, the same way `/copy` does. It writes no files.
 
@@ -131,7 +140,7 @@ Developing a mod: see [CLAUDE.md](./CLAUDE.md).
 | mod | できること |
 | --- | --- |
 | touch-map | Claude がどのファイルを読んだか、変えたか、開かなかったかを、ペインにツリーとマップで表示する |
-| copy-blocks | Claude の最後の返事にある引用やコードブロックを、ボタン1つで余計な改行なしにコピーする |
+| copy-blocks | Claude の返事にある引用やコードブロックにコピーボタンを付け、余計な改行なしにコピーできるようにする |
 
 touch-map は、Claude がこのセッションで触ったファイルを created・edited・read・partial・listed・deleted・auto に分けて、会話の横のペインにツリーとアクティビティマップで表示する Claude Code の mod です。触っていないところも畳んで見せるので、「どこまで見て答えたのか」がわかります。
 
@@ -144,7 +153,7 @@ Claude Code 2.1.287 以上が必要です。Ghostty は 1.3.1 以上を推奨し
 
 インストールしたら、新しいセッションで一度 `/touch-map` を実行してください。外部に何かを送ることはなく、実行するのは `printenv HOME`・`git ls-files`・`git worktree list`・`git status` だけです。
 
-copy-blocks は、Claude の最後の返事にある引用（`>`）とコードブロックごとに、入力欄の上にコピーボタンを並べる mod です。ターミナルで選択してコピーしたときのように、余計な改行や `│` が入りません。
+copy-blocks は、Claude の返事にある引用（`>`）とコードブロックにコピーボタンを付ける mod です。ボタンは、返事の中のブロックの直上（`── bash · 2 lines ── ⧉ copy` の行全体）と、最後の返事の分を入力欄の上の帯に出します。ターミナルで選択してコピーしたときのように、余計な改行や `│` が入りません。出す場所は `/config` の **copy-blocks buttons** で `both`（初期値）・`inline`（返事の中だけ）・`band`（帯だけ）から選べます。`band` なら返事の表示には手を加えません。
 
 ```
 claude plugin install copy-blocks@y-hirakaw-mods

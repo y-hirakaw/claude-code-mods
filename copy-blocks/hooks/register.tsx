@@ -6,6 +6,7 @@ import type { Block } from '../types'
 const blocks = atom({ plugin: 'copy-blocks', key: 'blocks' } as const, [] as Block[])
 const copied = atom({ plugin: 'copy-blocks', key: 'copied' } as const, [] as number[])
 const flash = atom({ plugin: 'copy-blocks', key: 'flash' } as const, null as number | null)
+const inline = atom({ plugin: 'copy-blocks', key: 'inline' } as const, null as string | null)
 
 const PANE = 'copy-blocks'
 // 抜き出すのは 9 個まで
@@ -20,33 +21,66 @@ const MANY_LINES = 5
 // 「✓ copied」を出しておく時間
 const FLASH_MS = 1500
 
-// 引用（> で始まる行の続き）とコードブロック（``` で囲んだ部分）を、出てきた順に抜き出す
-export function extract(answer: string): Block[] {
-  const out: Block[] = []
-  const lines = answer.split('\n')
+// lines[i] から始まる引用（> で始まる行の続き）かコードブロック（``` で囲んだ部分）の終わりと中身。どちらでもなければ null
+// 中身が空のブロックは block を持たない
+function blockAt(lines: string[], i: number): { end: number; block?: Block } | null {
+  const line = lines[i] ?? ''
+  const fence = line.match(/^\s*(`{3,}|~{3,})\s*([\w+#.-]*)/)
+  if (fence) {
+    const close = fence[1] ?? '```'
+    const lang = fence[2] ?? ''
+    let end = i + 1
+    while (end < lines.length && !(lines[end] ?? '').trim().startsWith(close)) end += 1
+    const body = lines.slice(i + 1, end)
+    end += 1
+    if (!body.some(l => l.trim() !== '')) return { end }
+    const text = body.join('\n')
+    return { end, block: lang ? { kind: 'code', text, lang } : { kind: 'code', text } }
+  }
+  if (/^\s*>/.test(line)) {
+    let end = i
+    while (end < lines.length && /^\s*>/.test(lines[end] ?? '')) end += 1
+    const body = lines.slice(i, end).map(l => l.replace(/^\s*> ?/, ''))
+    if (!body.some(l => l.trim() !== '')) return { end }
+    return { end, block: { kind: 'quote', text: body.join('\n').trim() } }
+  }
+  return null
+}
+
+// 回答を、地の文と、引用・コードブロックに切り分ける。raw は描くための元の markdown、block はコピーする中身
+export type Part = { raw: string; block?: Block }
+export function split(text: string): Part[] {
+  const out: Part[] = []
+  const lines = text.split('\n')
+  let prose: string[] = []
+  const flush = () => {
+    if (prose.join('').trim() !== '') out.push({ raw: prose.join('\n') })
+    prose = []
+  }
   let i = 0
   while (i < lines.length) {
-    const line = lines[i] ?? ''
-    const fence = line.match(/^\s*(`{3,}|~{3,})\s*([\w+#.-]*)/)
-    if (fence) {
-      const close = fence[1] ?? '```'
-      const lang = fence[2] ?? ''
-      const body: string[] = []
+    const found = blockAt(lines, i)
+    if (!found) {
+      prose.push(lines[i] ?? '')
       i += 1
-      while (i < lines.length && !(lines[i] ?? '').trim().startsWith(close)) body.push(lines[i++] ?? '')
-      i += 1
-      if (body.some(l => l.trim() !== '')) out.push(lang ? { kind: 'code', text: body.join('\n'), lang } : { kind: 'code', text: body.join('\n') })
       continue
     }
-    if (/^\s*>/.test(line)) {
-      const body: string[] = []
-      while (i < lines.length && /^\s*>/.test(lines[i] ?? '')) body.push((lines[i++] ?? '').replace(/^\s*> ?/, ''))
-      if (body.some(l => l.trim() !== '')) out.push({ kind: 'quote', text: body.join('\n').trim() })
-      continue
-    }
-    i += 1
+    const raw = lines.slice(i, found.end).join('\n')
+    if (found.block) {
+      flush()
+      out.push({ raw, block: found.block })
+    } else prose.push(raw)
+    i = found.end
   }
-  return out.slice(0, MAX)
+  flush()
+  return out
+}
+
+// 引用とコードブロックを、出てきた順に抜き出す（帯とペインに並べる分）
+export function extract(answer: string): Block[] {
+  return split(answer)
+    .flatMap(p => (p.block ? [p.block] : []))
+    .slice(0, MAX)
 }
 
 // 端末で何セル使うか。全角は 2 セル
@@ -105,15 +139,17 @@ export function fit(list: Block[], columns: number): { items: Item[]; rest: numb
   return { items: bare.slice(0, 1), rest: bare.length - 1 }
 }
 
+// クリップボードに書く。手応えは ✓ で返すので、トーストはうまくいかなかったときだけ
+async function toClipboard($: any, text: string, surface: any): Promise<boolean> {
+  const r = await $.ui.copy({ text, surface })
+  if (!r.isCopied) $.ui.toast(`Not copied: ${r.reason}`)
+  return r.isCopied
+}
+
 async function copy($: any, list: Block[], i: number, surface: any): Promise<void> {
   const b = list[i]
   if (!b) return
-  const r = await $.ui.copy({ text: b.text, surface })
-  if (!r.isCopied) {
-    // 手応えは帯の ✓ で返す。トーストはうまくいかなかったときだけ
-    $.ui.toast(`Not copied: ${r.reason}`)
-    return
-  }
+  if (!(await toClipboard($, b.text, surface))) return
   await update($, copied, (xs: number[]) => (xs.includes(i) ? xs : [...xs, i]))
   await update($, flash, () => i)
   await $.clock.sleep(FLASH_MS)
@@ -144,7 +180,37 @@ function entry($: any, e: any, list: Block[], it: Item, done: number[], lit: num
   )
 }
 
-export const register: Register = on => {
+// 回答の中のボタンで押したブロックをコピーする。中身はボタンを描いたときの本文から取るので、次のターンのあとも押せる
+async function copyInline($: any, key: string, text: string, surface: any): Promise<void> {
+  if (!(await toClipboard($, text, surface))) return
+  await update($, inline, () => key)
+  await $.clock.sleep(FLASH_MS)
+  await update($, inline, (k: string | null) => (k === key ? null : k))
+}
+
+// ヘッダーの見出し。「bash · 2 lines」「quote」
+const headOf = (b: Block): string => [b.kind === 'quote' ? 'quote' : b.lang ?? 'code', linesOf(b) > 1 ? `${linesOf(b)} lines` : ''].filter(Boolean).join(' · ')
+
+// 見出しを挟む罫線。画面の端までは伸ばさず、⧉ copy と合わせて RULE セルほどで止める
+const RULE = 40
+export const ruleOf = (b: Block): string => {
+  const head = `── ${headOf(b)} `
+  return head + '─'.repeat(Math.max(2, RULE - cellsOf(head) - cellsOf(' ⧉ copy')))
+}
+
+// 本文の文字列から短い印を作る。同じ回答を描き直しても同じ key になるように
+export const hashOf = (s: string): string => {
+  let h = 0
+  for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) | 0
+  return (h >>> 0).toString(36)
+}
+
+export const register: Register = (on, options) => {
+  // /config の「copy-blocks buttons」。回答の中（inline）、プロンプトの上の帯（band）、両方（both）
+  const placement = options?.placement ?? 'both'
+  const inlineOn = placement !== 'band'
+  const bandOn = placement !== 'inline'
+
   // 本体の返事だけを見る。サブエージェントの返事と、止めたターンは飛ばす
   on('turn.complete', async ($, e, next) => {
     if (e.agentId === undefined && !e.isAborted) {
@@ -169,6 +235,7 @@ export const register: Register = on => {
   })
 
   on('ui.render', { component: 'AbovePrompt' }, async ($, e, next) => {
+    if (!bandOn) return next(e)
     const list = await read($, blocks)
     if (list.length === 0 || e.props.hasSurvey || e.props.isWorking) return next(e)
     const done = await read($, copied)
@@ -199,6 +266,51 @@ export const register: Register = on => {
       </Box>
     ) : (
       mine
+    )
+  })
+
+  // 回答の本文の中で、引用とコードブロックの直上にコピーボタンを置く。ブロックがない回答は本体がそのまま描く
+  on('ui.render', { component: 'AssistantMessage' }, async ($, e, next) => {
+    if (!inlineOn) return next(e)
+    const parts = split(e.props.text)
+    if (!parts.some(p => p.block)) return next(e)
+    const lit = await read($, inline)
+    const { Box, Button, Markdown, Text } = $.ui.resolve(e) as any
+    const id = hashOf(e.props.text)
+    return (
+      // 本体の見た目に合わせる：左に 2 セルの列をとって返事の最初のブロックにだけ ● を置き、部分の間は 1 行あける
+      <Box flexDirection="row">
+        <Box width={2} flexShrink={0}>
+          <Text>{e.props.isFirstOfReply ? '●' : ' '}</Text>
+        </Box>
+        <Box flexDirection="column" rowGap={1} flexGrow={1} flexShrink={1}>
+          {parts.map((p, n) => {
+            const body = <Markdown key={`md-${id}-${n}`} text={p.raw} />
+            if (!p.block) return body
+            const key = `inline-${id}-${n}`
+            const text = p.block.text
+            const press = (x: { surface: unknown }) => void copyInline($, key, text, x.surface)
+            const hover = { scope: key, inverse: true }
+            return (
+              // ブロックの直上に、罫線の形のヘッダーを置く。罫線は薄く、⧉ copy だけ普通の明るさ（Button は色を持てない）
+              // 2 つは同じホバーのグループなので、行のどこを押してもコピーでき、乗せると行全体が反転する
+              <Box key={`blk-${id}-${n}`} flexDirection="column">
+                {lit === key ? (
+                  <Text color="green" bold>{`── ${headOf(p.block)} ── ✓ copied`}</Text>
+                ) : (
+                  <Box flexDirection="row" columnGap={1}>
+                    <Button key={`${key}-rule`} label={ruleOf(p.block)} plain dimColor hover={hover} onPress={press} />
+                    <Box flexShrink={0}>
+                      <Button key={key} label="⧉ copy" plain hover={hover} onPress={press} />
+                    </Box>
+                  </Box>
+                )}
+                {body}
+              </Box>
+            )
+          })}
+        </Box>
+      </Box>
     )
   })
 

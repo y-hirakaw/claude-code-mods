@@ -1,6 +1,6 @@
 import { expect, mock, test } from 'claude-code/testing'
 
-import { extract, fit, labelOf } from '../hooks/register'
+import { extract, fit, hashOf, labelOf, ruleOf, split } from '../hooks/register'
 
 const ANSWER = [
   'こう送るといいです。',
@@ -71,4 +71,61 @@ test('帯は 1 行に収め、入りきらなければラベルを縮めて残�
   expect(mid.items[0]?.label.length).toBeLessThanOrEqual(12)
   const narrow = fit(many, 40)
   expect(narrow.items.every(it => it.label === '')).toBe(true)
+})
+
+test('回答を地の文とブロックに切り分け、描くための元の markdown も残す', async () => {
+  const parts = split(ANSWER)
+  expect(parts.map(p => p.block?.kind ?? 'prose')).toEqual(['prose', 'quote', 'prose', 'code'])
+  expect(parts[3]?.raw).toBe('```bash\ngit push\n```')
+})
+
+test('回答の中のブロックの横にボタンが出て、押すとその本文をコピーする', async ($, on) => {
+  const copied: string[] = []
+  const clock = mock.clock(on, { now: 1_000_000 })
+  on('ui.copy', async (_$, e) => {
+    copied.push(e.text)
+    return { value: { isCopied: true } } as never
+  })
+  on('ui.render', async ($$, e) => $$.ui.resolve(e).Text({ children: ['engine'] }))
+  const ui = await $.ui.mount({ plugin: 'copy-blocks', surface: 'terminal', component: 'AssistantMessage', props: { text: ANSWER, isFirstOfReply: true } as never })
+  const id = hashOf(ANSWER)
+  // 本体と同じく、返事の頭に ● を置く
+  expect(await ui.find({ text: '●' })).toBeDefined()
+  // 引用は 2 番目、コードは 4 番目の部分
+  expect(await ui.find({ key: `inline-${id}-1` })).toBeDefined()
+  // ヘッダーの行まるごとが押せるボタン
+  expect(await ui.find({ key: `inline-${id}-3-rule` })).toBeDefined()
+  expect(ruleOf({ kind: 'code', lang: 'bash', text: 'a\nb' })).toMatch(/^── bash · 2 lines ─+$/)
+  await ui.press({ key: `inline-${id}-3` })
+  expect(copied).toEqual(['git push'])
+  expect(await ui.find({ text: '── bash ── ✓ copied' })).toBeDefined()
+  await clock.advance(1600)
+  expect(await ui.find({ key: `inline-${id}-3` })).toBeDefined()
+  await ui.unmount()
+})
+
+test('ブロックのない回答はそのまま描く', async ($, on) => {
+  on('ui.render', async ($$, e) => $$.ui.resolve(e).Text({ children: ['engine'] }))
+  const ui = await $.ui.mount({ plugin: 'copy-blocks', surface: 'terminal', component: 'AssistantMessage', props: { text: 'ただの文です。', isFirstOfReply: true } as never })
+  expect(await ui.find({ text: 'engine' })).toBeDefined()
+  await ui.unmount()
+})
+
+test('placement: inline では帯にボタンを出さない', { options: { placement: 'inline' } }, async ($, on) => {
+  on('ui.render', async ($$, e) => $$.ui.resolve(e).Text({ children: ['below'] }))
+  on('turn.complete', async () => ({ text: '' }) as never)
+  const props = { hasSurvey: false, isWorking: false, maxRows: 10, bodyColumns: 80 }
+  const ui = await $.ui.mount({ plugin: 'copy-blocks', surface: 'terminal', component: 'AbovePrompt', props: props as never })
+  await $.turn.complete({ answer: ANSWER, durationMs: 1, isAborted: false, turnId: 't1', reason: 'answer' } as never)
+  expect(await ui.find({ key: 'copy-0' })).toBeUndefined()
+  expect(await ui.find({ text: 'below' })).toBeDefined()
+  await ui.unmount()
+})
+
+test('placement: band では回答の中にボタンを出さない', { options: { placement: 'band' } }, async ($, on) => {
+  on('ui.render', async ($$, e) => $$.ui.resolve(e).Text({ children: ['engine'] }))
+  const ui = await $.ui.mount({ plugin: 'copy-blocks', surface: 'terminal', component: 'AssistantMessage', props: { text: ANSWER, isFirstOfReply: true } as never })
+  expect(await ui.find({ text: 'engine' })).toBeDefined()
+  expect(await ui.find({ key: `inline-${hashOf(ANSWER)}-3` })).toBeUndefined()
+  await ui.unmount()
 })

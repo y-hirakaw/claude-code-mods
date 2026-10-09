@@ -9,6 +9,8 @@ declare module 'claude-code' {
       copied: number[]
       // 「✓ copied」を出しているブロックの番号
       flash: number | null
+      // 回答の中のボタンで直前にコピーしたもの（ボタンの key）
+      inline: string | null
     }
   }
 }
