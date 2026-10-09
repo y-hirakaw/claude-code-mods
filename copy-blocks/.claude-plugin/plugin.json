@@ -1,7 +1,7 @@
 {
   "name": "copy-blocks",
-  "version": "0.2.0",
-  "description": "Copy each quote or code block of Claude's last answer with one click, from buttons above the prompt.",
+  "version": "0.2.1",
+  "description": "Copy each quote or code block in Claude's answer with one click, from a copy button above each block or a row above the prompt.",
   "author": {
     "name": "y-hirakaw",
     "url": "https://github.com/y-hirakaw"
