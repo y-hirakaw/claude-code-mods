@@ -1,0 +1,9 @@
+{
+  "name": "y-hirakaw-mods",
+  "version": "0.1.0",
+  "description": "Marketplace of Claude Code mods: touch-map and copy-blocks. Add it with /plugin marketplace add y-hirakaw/claude-code-mods, then install each mod by name.",
+  "author": { "name": "y-hirakaw", "url": "https://github.com/y-hirakaw" },
+  "homepage": "https://github.com/y-hirakaw/claude-code-mods",
+  "repository": "https://github.com/y-hirakaw/claude-code-mods",
+  "license": "MIT"
+}
