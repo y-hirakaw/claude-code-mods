@@ -12,7 +12,7 @@
       "name": "touch-map",
       "source": "./touch-map",
       "description": "See which files Claude has listed, read, partially read, edited, created or deleted, as a tree and an activity map in a pane.",
-      "version": "0.1.1"
+      "version": "0.2.0"
     },
     {
       "name": "copy-blocks",

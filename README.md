@@ -29,7 +29,7 @@ claude plugin install touch-map@y-hirakaw-mods
 
 Or inside Claude Code: run `/plugin marketplace add y-hirakaw/claude-code-mods`, then open `/plugin`, pick the marketplace, select **touch-map** and install it.
 
-Then start a new session and run `/touch-map` once. From then on the pane opens by itself when the terminal is wide enough; otherwise run `/touch-map`.
+Then start a new session and run `/touch-map` once. From then on the pane opens by itself beside the conversation when Claude Code uses its fullscreen layout and the terminal is wide enough. On the main screen (tmux, for example), where a pane would push into the prompt area, it stays as one line above the prompt with an `open` button instead. You can always run `/touch-map` to open it.
 
 <details>
 <summary>Try it for one session without installing</summary>

@@ -27,6 +27,8 @@ declare module 'claude-code' {
       now: Now | null
       // ペイン上部のアクティビティマップを出すか
       map: boolean
+      // 起動時にペインを開くかを、まだ決めていない。帯の描画でレイアウト（fullscreen か）を見て決める
+      autoOpen: boolean
     }
   }
 }

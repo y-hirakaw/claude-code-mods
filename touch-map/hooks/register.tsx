@@ -14,6 +14,7 @@ const loadedAtom = atom({ plugin: 'touch-map', key: 'loaded' } as const, {})
 const folds = atom({ plugin: 'touch-map', key: 'folds' } as const, {})
 const nowAtom = atom({ plugin: 'touch-map', key: 'now' } as const, null)
 const mapAtom = atom({ plugin: 'touch-map', key: 'map' } as const, true)
+const autoOpenAtom = atom({ plugin: 'touch-map', key: 'autoOpen' } as const, false)
 
 const LEVELS = ['listed', 'partial', 'read', 'edited', 'created'] as const
 const COLORS = ['#c084fc', '#818cf8', '#60a5fa', '#fb923c', '#4ade80'] as const
@@ -847,15 +848,43 @@ async function loadPrefs($: any): Promise<void> {
 // 作り直しと SessionStart の順は決まっていないので、/clear 後の最初のツール呼び出しや読み込みでも戻す
 let afterClear = false
 
+// 頼まれずに開くペインは、横に並ぶ（fullscreen のレイアウト）ときだけにする。通常画面ではプロンプトの上に割り込むため。
+// 起動時にはレイアウトが分からないので、帯の描画で e.viewport.isFullscreen を見て、タイマーから開くか帯にするかを決める
+// heldBack は通常画面なので開かずに帯にしたこと。$.store には残さない（次の fullscreen のセッションでは開く）
+let heldBack = false
+// 決めるタイマーを仕掛けたか。描き直しのたびに仕掛けないように
+let deciding = false
+
+async function decideOpen($: any, isFullscreen: boolean | undefined): Promise<void> {
+  try {
+    if (!(await read($, autoOpenAtom))) return
+    await update($, autoOpenAtom, () => false)
+    if (isFullscreen === false) {
+      heldBack = true
+      await update($, minimized, () => true)
+      await trace($, 'autoOpen', { open: false, reason: 'main screen' })
+      return
+    }
+    // fullscreen、またはレイアウトを言わない画面（分からないときは前と同じく開く）
+    const opened = await $.ui.open({ id: PANE, title: 'Touch map' })
+    await trace($, 'autoOpen', { open: true, isFullscreen, placed: opened?.isPlaced })
+  } finally {
+    deciding = false
+  }
+}
+
 async function restoreAfterClear($: any, done: boolean): Promise<void> {
   if (!afterClear) return
   await loadPrefs($)
+  // 通常画面で開かずにおいたときは、帯を出し直す（ペインも帯も見えなくならないように）
+  if (heldBack) await update($, minimized, () => true)
   const now = await $.clock.now()
   await update($, segment, (seg: Segment) => (seg.startedAt > 0 ? seg : { ...seg, startedAt: now }))
   if (done) afterClear = false
 }
 
 async function minimize($: any): Promise<void> {
+  if (await read($, autoOpenAtom)) await update($, autoOpenAtom, () => false)
   await setMinimized($, true)
   await $.ui.close({ id: PANE })
   await trace($, 'minimize')
@@ -864,6 +893,9 @@ async function minimize($: any): Promise<void> {
 // 先に開いてみて、描かれたときだけ最小化を解く。描かれずに保留されたら（人の操作でなく開いたとき、狭い端末では保留される）
 // 帯を残したまま知らせる。帯もペインも消えて何も見えなくなるのを防ぐ
 async function restore($: any): Promise<void> {
+  // 人が開いたので、起動時の判断はもう要らない
+  heldBack = false
+  if (await read($, autoOpenAtom)) await update($, autoOpenAtom, () => false)
   const opened = await $.ui.open({ id: PANE, title: 'Touch map' })
   if (opened?.isPlaced === false) {
     $.ui.toast('Touch map: the terminal is too narrow to open the pane here. Run /touch-map to open it.')
@@ -1206,7 +1238,9 @@ export const register: Register = on => {
     })
     const isMin: boolean = await read($, minimized)
     await trace($, 'session.start', { root, files: files.size, fileNote, surface: e.surface, minimized: isMin, loadMs })
-    if (!isMin) void $.ui.open({ id: PANE, title: 'Touch map' })
+    // 開くかどうかは帯の描画でレイアウトを見てから決める（decideOpen）。reload でペインがもう開いていれば何もしない
+    const panes: readonly { id: string }[] = await $.ui.panes().catch(() => [])
+    if (!isMin && !panes.some(p => p.id === PANE)) await update($, autoOpenAtom, () => true)
     return next(e)
   })
 
@@ -1271,7 +1305,15 @@ export const register: Register = on => {
   })
 
   on('ui.render', { component: 'AbovePrompt' }, async ($, e, next) => {
-    if (!(await read($, minimized))) return next(e)
+    const isFullscreen = e.viewport?.isFullscreen
+    const pending: boolean = await read($, autoOpenAtom)
+    if (pending && !deciding) {
+      // 描画の中では開かない。タイマーから開くか帯にするかを決める
+      deciding = true
+      $.clock.after(0, () => void decideOpen($, isFullscreen))
+    }
+    // 通常画面と分かったら、決める前から帯を出しておく
+    if (!(await read($, minimized)) && !(pending && isFullscreen === false)) return next(e)
     const { Box, Text, Button } = $.ui.resolve(e)
     const all: Record<string, Touch> = await read($, touches)
     const touched = Object.keys(all).length
@@ -1286,7 +1328,7 @@ export const register: Register = on => {
           ))}
         </Text>
         <Text>
-          <Text bold>{fmt(touched)}</Text>
+          <Text weight="semibold">{fmt(touched)}</Text>
           <Text dimColor>{`/${fmt(files.size)}`}</Text>
         </Text>
         {/* 開く処理は下の ui.press のフックで行う。ここで描いたときの $ で開くと、人の操作として扱われない */}
@@ -1449,7 +1491,7 @@ export const register: Register = on => {
                 <Text
                   wrap="truncate-end"
                   color={nameColor}
-                  bold={row.kind === 'dir' && row.stat !== undefined || (row.kind === 'file' && row.now)}
+                  weight={(row.kind === 'dir' && row.stat !== undefined) || (row.kind === 'file' && row.now) ? 'semibold' : undefined}
                   strikethrough={row.kind === 'file' && row.touch?.d === true}
                 >
                   {'text' in row ? row.text : row.name}
@@ -1484,7 +1526,7 @@ export const register: Register = on => {
             {Input ? (
               <Input key="label" placeholder="task name" value={seg.label} submitLabel="set" onSubmit={(value: string) => void setLabel($, value)} />
             ) : (
-              <Text bold wrap="truncate-end">{seg.label}</Text>
+              <Text weight="semibold" wrap="truncate-end">{seg.label}</Text>
             )}
           </Box>
           <Text dimColor>{elapsed(seg.startedAt, await $.clock.now())}</Text>
@@ -1495,7 +1537,7 @@ export const register: Register = on => {
         {/* 狭いペインでは、項目の途中で切らずに項目の切れ目で折り返す */}
         <Box flexDirection="row" flexWrap="wrap" columnGap={2}>
           <Text>
-            <Text bold>{fmt(Object.keys(all).length)}</Text>
+            <Text weight="semibold">{fmt(Object.keys(all).length)}</Text>
             <Text dimColor>{`/${fmt(files.size)}`}</Text>
           </Text>
           {legend.map(l => (

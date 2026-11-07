@@ -12,7 +12,8 @@ const CLEAR = {
 // エンジンの外側（git、ファイル、時計、ツールの実行）をテストの中で答え、書き出したログを集める
 // status は git status --porcelain -z の出力（呼ばれた回数を渡して切り替えられる）、mtimes はファイルごとの更新時刻
 // bashText は Bash の出力、ownClock はテストが時計を自分で持つとき
-type Extra = { status?: (calls: number) => string; mtimes?: Record<string, number>; bashText?: string; ownClock?: boolean; placed?: boolean }
+// opened は開いたペインの id を、store は $.store の中身を、テストから見るためのもの
+type Extra = { status?: (calls: number) => string; mtimes?: Record<string, number>; bashText?: string; ownClock?: boolean; placed?: boolean; opened?: string[]; store?: Map<string, unknown> }
 
 const stub = (on: On, list = FILES, extra: Extra = {}) => {
   let statusCalls = 0
@@ -39,14 +40,17 @@ const stub = (on: On, list = FILES, extra: Extra = {}) => {
   })
   if (!extra.ownClock) on('clock.now', async () => ({ value: 60_000 }))
   on('session.id', async () => ({ value: 's1' }))
-  const store = new Map<string, unknown>()
+  const store = extra.store ?? new Map<string, unknown>()
   on('store.get', async (_$, e) => ({ value: store.get(e.key) ?? null }))
   on('store.set', async (_$, e) => {
     store.set(e.key, e.value)
     return { value: undefined }
   })
   on('command.register', async () => ({ value: { command: 'touch-map' } }))
-  on('ui.open', async () => ({ value: extra.placed === false ? { isPlaced: false as const, reason: 'narrow' } : { isPlaced: true as const } }))
+  on('ui.open', async (_$, e) => {
+    extra.opened?.push(e.id)
+    return { value: extra.placed === false ? { isPlaced: false as const, reason: 'narrow' } : { isPlaced: true as const } }
+  })
   on('tool.call', async (_$, e) => {
     // 範囲を指定した Read は、Claude Code と同じく読んだ行と全体の行数を返す（全体は100行）
     if (e.tool === 'Read' && e.offset !== undefined) {
@@ -679,4 +683,75 @@ test('アクティビティマップ: 新しく作ったファイルのマスも
   const fgs = decode(String((map?.props as { cells?: string } | undefined)?.cells ?? '')).filter(([ch]) => ch === 0x25a0).map(([, fg]) => fg)
   expect(fgs).toContain(0xffffff)
   await ui.unmount()
+})
+
+test('触ったディレクトリと直近のファイルは weight で太く描く（非推奨の bold は使わない）', async ($, on) => {
+  stub(on)
+  await $.session.start({ cwd: '/repo', surface: 'terminal', isInteractive: true })
+  await $.tool.call({ tool: 'Read', file_path: '/repo/src/domain/order.ts' })
+  const ui = await $.ui.mount({ plugin: 'touch-map', surface: 'terminal', component: 'Pane', requestId: 'touch-map', props: PANE_PROPS, viewport: { columns: 80, rows: 40 } })
+  const dir = await ui.find({ type: 'Text', text: /^src\/domain\/$/ })
+  const now = await ui.find({ type: 'Text', text: /^order\.ts$/ })
+  expect(dir?.props.weight).toBe('semibold')
+  expect(now?.props.weight).toBe('semibold')
+  expect(dir?.props.bold).toBeUndefined()
+  // 触っていないものは太くしない
+  const quiet = await ui.find({ type: 'Text', text: /untouched/ })
+  expect(quiet?.props.weight).toBeUndefined()
+  await ui.unmount()
+})
+
+// 起動時のペイン: 頼まれずに開くのは横に並ぶとき（fullscreen）だけ。帯の描画でレイアウトを見て決める
+const startAndDraw = async ($: any, on: On, isFullscreen: boolean | undefined) => {
+  const opened: string[] = []
+  const store = new Map<string, unknown>()
+  const written = stub(on, FILES, { ownClock: true, opened, store })
+  const clock = mock.clock(on, { now: 60_000 })
+  on('ui.panes', async () => ({ value: [] }))
+  await $.session.start({ cwd: '/repo', surface: 'terminal', isInteractive: true })
+  await $.tool.call({ tool: 'Read', file_path: '/repo/docs/spec.md' })
+  // 起動しただけでは開かない
+  expect(opened).toEqual([])
+  const viewport = isFullscreen === undefined ? { columns: 160, rows: 40 } : { columns: 160, rows: 40, isFullscreen }
+  const band = await $.ui.mount({ plugin: 'touch-map', surface: 'terminal', component: 'AbovePrompt', props: {} as never, viewport })
+  await clock.advance(10)
+  return { opened, store, band, written }
+}
+
+test('起動時のペイン: fullscreen なら開き、帯は出さない', async ($, on) => {
+  const { opened, band } = await startAndDraw($, on, true)
+  expect(opened).toEqual(['touch-map'])
+  expect(await band.find({ key: 'open' })).toBeUndefined()
+  await band.unmount()
+})
+
+test('起動時のペイン: 通常画面では開かずに帯を出す。最小化の好みは $.store に残さない', async ($, on) => {
+  const { opened, store, band } = await startAndDraw($, on, false)
+  expect(opened).toEqual([])
+  expect(await band.find({ key: 'open' })).toBeDefined()
+  expect(await band.find({ text: '/6' })).toBeDefined()
+  expect(store.has('pref.minimized')).toBe(false)
+  // 帯の [ open ] で開ける
+  await band.press({ key: 'open' })
+  expect(opened).toEqual(['touch-map'])
+  await band.unmount()
+})
+
+test('起動時のペイン: 通常画面で開かずにおいたら、/clear のあとも帯を残す', async ($, on) => {
+  on('classic.SessionStart', async () => ({}))
+  on('session.end', async () => ({ sessionId: 's1' }))
+  const { opened, band } = await startAndDraw($, on, false)
+  await band.unmount()
+  await $.session.end({ reason: 'clear', sessionId: 's1' } as never)
+  await $.classic.SessionStart({ source: 'clear' })
+  const after = await $.ui.mount({ plugin: 'touch-map', surface: 'terminal', component: 'AbovePrompt', props: {} as never, viewport: { columns: 160, rows: 40, isFullscreen: false } })
+  expect(await after.find({ key: 'open' })).toBeDefined()
+  expect(opened).toEqual([])
+  await after.unmount()
+})
+
+test('起動時のペイン: レイアウトを言わない画面では、前と同じく開く', async ($, on) => {
+  const { opened, band } = await startAndDraw($, on, undefined)
+  expect(opened).toEqual(['touch-map'])
+  await band.unmount()
 })
