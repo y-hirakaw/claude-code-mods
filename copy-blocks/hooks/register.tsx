@@ -296,7 +296,7 @@ export const register: Register = (on, options) => {
               // 2 つは同じホバーのグループなので、行のどこを押してもコピーでき、乗せると行全体が反転する
               <Box key={`blk-${id}-${n}`} flexDirection="column">
                 {lit === key ? (
-                  <Text color="green" bold>{`── ${headOf(p.block)} ── ✓ copied`}</Text>
+                  <Text color="green" weight="semibold">{`── ${headOf(p.block)} ── ✓ copied`}</Text>
                 ) : (
                   <Box flexDirection="row" columnGap={1}>
                     <Button key={`${key}-rule`} label={ruleOf(p.block)} plain dimColor hover={hover} onPress={press} />

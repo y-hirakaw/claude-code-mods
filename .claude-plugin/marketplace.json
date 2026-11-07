@@ -18,7 +18,7 @@
       "name": "copy-blocks",
       "source": "./copy-blocks",
       "description": "Copy each quote or code block in Claude's answer with one click, from a copy button above each block or a row above the prompt.",
-      "version": "0.2.1"
+      "version": "0.2.2"
     }
   ]
 }

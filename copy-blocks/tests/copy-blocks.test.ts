@@ -104,6 +104,19 @@ test('回答の中のブロックの横にボタンが出て、押すとその�
   await ui.unmount()
 })
 
+test('コピーした印「✓ copied」は weight で太く描く（非推奨の bold は使わない）', async ($, on) => {
+  const clock = mock.clock(on, { now: 1_000_000 })
+  on('ui.copy', async () => ({ value: { isCopied: true } }) as never)
+  on('ui.render', async ($$, e) => $$.ui.resolve(e).Text({ children: ['engine'] }))
+  const ui = await $.ui.mount({ plugin: 'copy-blocks', surface: 'terminal', component: 'AssistantMessage', props: { text: ANSWER, isFirstOfReply: true } as never })
+  await ui.press({ key: `inline-${hashOf(ANSWER)}-3` })
+  const lit = await ui.find({ type: 'Text', text: '── bash ── ✓ copied' })
+  expect(lit?.props.weight).toBe('semibold')
+  expect(lit?.props.bold).toBeUndefined()
+  await clock.advance(1600)
+  await ui.unmount()
+})
+
 test('ブロックのない回答はそのまま描く', async ($, on) => {
   on('ui.render', async ($$, e) => $$.ui.resolve(e).Text({ children: ['engine'] }))
   const ui = await $.ui.mount({ plugin: 'copy-blocks', surface: 'terminal', component: 'AssistantMessage', props: { text: 'ただの文です。', isFirstOfReply: true } as never })
